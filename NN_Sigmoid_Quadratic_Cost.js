@@ -1,11 +1,14 @@
 class Matrix {
     constructor(row, col, rand) {
         if (arguments.length === 1) {
-            var arr = row;
-            this.rowNum = arr.length;
+            var img = new Array();
+            img = row.image;
+            
+            this.rowNum = row.image.length;
             this.colNum = 1;
             this.matrix = new Array();
-            this.matrix.push(arr);
+            this.matrix.push(img);
+            this.label = row.label;
 
         } else {
             this.rowNum = row;
@@ -15,7 +18,9 @@ class Matrix {
                 for (var i = 0; i < col; ++i) {
                     var mat = new Array();
                     for (var j = 0; j < row; ++j) {
-                        mat.push(0.1 * Math.random())
+                        
+                        mat.push(0.01 * Math.random())
+                        
                     }
                     this.matrix.push(mat);
                 }
@@ -171,14 +176,12 @@ class Matrix {
         return true;
     }
 
-    maxIndex(mat2) {
-        if ((this.rowNum != mat2.rowNum) || (this.colNum != mat2.colNum)) {
-            return false;
-        }
+    maxIndex() {
+        
         var index1 = 0;
-        var index2 = 0;
+        
         var max1 = Number.NEGATIVE_INFINITY;
-        var max2 = Number.NEGATIVE_INFINITY;
+        
         var walker = 0;
         for (var i = 0; i < this.rowNum; ++i) {
             for (var j = 0; j < this.colNum; ++j) {
@@ -186,18 +189,11 @@ class Matrix {
                     max1 = this.getEntry(i, j);
                     index1 = walker;
                 }
-                if (mat2.getEntry(i, j) > max2) {
-                    max2 = mat2.getEntry(i, j);
-                    index2 = walker;
-                }
+                
                 ++walker;
             }
         }
-        if (index1 == index2) {
-            return true;
-        } else {
-            return false;
-        }
+        return index1;
     }
 
     vectorize() {
@@ -318,7 +314,7 @@ class NeuralNetwork_Sigmoid_Quadratic_Cost {
         container = container.sigmoidMatrix();
         for (var i = 1; i < this.weights.length; ++i) {
             container = this.weights[i].mult(container).add(this.biases[i]);
-            container = container.sigmoidPrime()
+            container = container.sigmoidPrimeMatrix()
         }
         return container;
     }
@@ -399,11 +395,13 @@ class NeuralNetwork_Sigmoid_Quadratic_Cost {
         var total = data.length;
         var correct = 0;
         for (var i = 0; i < total; ++i) {
-            if (this.feedforward(data[i][0]).maxIndex(data[i][1])) {
+            if (this.feedforward(new Matrix(data[i])).maxIndex() == data[i].label) {
                 ++correct;
                 console.log("Case " + i + " passed\n");
             } else {
                 console.log("Case " + i + " failed\n");
+                console.log("Max index = " + this.feedforward(new Matrix(data[i])).maxIndex() + "\n");
+                console.log("Label = " + data[i].label + "\n");
             }
         }
         return correct / total;
@@ -414,7 +412,9 @@ class NeuralNetwork_Sigmoid_Quadratic_Cost {
         for (var i = 0; i < epoch; ++i) {
             //var cost = 0;
             for (var j = 0; j < size; ++j) {
-                var wb = this.backPropagate(data[j][0], data[j][1]);
+                let expect = new Matrix((this.layers)[this.layers.length - 1], 1, false);
+                expect.setEntry(data[j].label, 0, 1);
+                var wb = this.backPropagate(new Matrix(data[j]), expect);
                 //c += this.cost(data[j][0], data[j][1]);
                 this.update(wb, rate);
             }
@@ -440,8 +440,11 @@ class NeuralNetwork_Sigmoid_Quadratic_Cost {
 					}
 					let wb = new WBPair(w, b); 
 					for (let j = 0; j < batchSize; ++j) {
-						wb = wb.add(this.backPropagate(data[i * batchSize + j][0], data[i * batchSize + j][1]));
-						c += this.cost(data[i * batchSize + j][0], data[i * batchSize + j][1]);
+                        let expect = new Matrix((this.layers)[this.layers.length - 1], 1, false);
+                        expect.setEntry(data[i * batchSize + j].label, 0, 1);
+                
+						wb = wb.add(this.backPropagate(new Matrix(data[i * batchSize + j]), expect));
+						c += this.cost(new Matrix(data[i * batchSize + j]), expect);
 					}
 					wb = wb.divide(batchSize);
 					this.update(wb, rate);
@@ -459,8 +462,11 @@ class NeuralNetwork_Sigmoid_Quadratic_Cost {
 					}
 					let wb = new WBPair(w, b); 
 					for (var j = 0; j < batchSize; ++j) {
-						wb = wb.add(this.backPropagate(data[i * batchSize + j][0], data[i * batchSize + j][1]));
-						c += this.cost(data[i * batchSize + j][0], data[i * batchSize + j][1]);
+                        let expect = new Matrix((this.layers)[this.layers.length - 1], 1, false);
+                        expect.setEntry(data[i * batchSize + j].label, 0, 1);
+                
+						wb = wb.add(this.backPropagate(new Matrix(data[i * batchSize + j]), expect));
+						c += this.cost(new Matrix(data[i * batchSize + j]), expect);
 					}
 					wb = wb.divide(batchSize);
 					this.update(wb, rate);
@@ -476,10 +482,12 @@ class NeuralNetwork_Sigmoid_Quadratic_Cost {
                 let wb = new WBPair(w, b); 
 
 				for (let p = 0; p < lastBatchSize; ++p) {
+					let expect = new Matrix((this.layers)[this.layers.length - 1], 1, false);
+                    expect.setEntry(data[(batchNum - 1) * batchSize + p].label, 0, 1);
+                
 					
-					
-					wb = wb.add(this.backPropagate(data[(batchNum - 1) * batchSize + p][0], data[(batchNum - 1) * batchSize + p][1]));
-					c += this.cost(data[(batchNum - 1) * batchSize + p][0], data[(batchNum - 1) * batchSize + p][1]);
+					wb = wb.add(this.backPropagate(new Matrix(data[(batchNum - 1) * batchSize + p]), expect));
+					c += this.cost(new Matrix(data[(batchNum - 1) * batchSize + p]), expect);
 					
 					
                 }
@@ -511,8 +519,11 @@ class NeuralNetwork_Sigmoid_Quadratic_Cost {
 					}
 					let wb = new WBPair(w, b); 
 					for (let j = 0; j < batchSize; ++j) {
-						wb = wb.add(this.backPropagate(data[i * batchSize + j][0], data[i * batchSize + j][1]));
-						c += this.cost(data[i * batchSize + j][0], data[i * batchSize + j][1]);
+                        let expect = new Matrix((this.layers)[this.layers.length - 1], 1, false);
+                        expect.setEntry(data[i * batchSize + j].label, 0, 1);
+                
+						wb = wb.add(this.backPropagate(new Matrix(data[i * batchSize + j]), expect));
+						c += this.cost(new Matrix(data[i * batchSize + j]), expect);
 					}
 					wb = wb.divide(batchSize);
 					this.update(wb, rate);
@@ -530,8 +541,11 @@ class NeuralNetwork_Sigmoid_Quadratic_Cost {
 					}
 					let wb = new WBPair(w, b); 
 					for (var j = 0; j < batchSize; ++j) {
-						wb = wb.add(this.backPropagate(data[i * batchSize + j][0], data[i * batchSize + j][1]));
-						c += this.cost(data[i * batchSize + j][0], data[i * batchSize + j][1]);
+                        let expect = new Matrix((this.layers)[this.layers.length - 1], 1, false);
+                        expect.setEntry(data[i * batchSize + j].label, 0, 1);
+                
+						wb = wb.add(this.backPropagate(new Matrix(data[i * batchSize + j]), expect));
+						c += this.cost(new Matrix(data[i * batchSize + j]), expect);
 					}
 					wb = wb.divide(batchSize);
 					this.update(wb, rate);
@@ -547,10 +561,12 @@ class NeuralNetwork_Sigmoid_Quadratic_Cost {
                 let wb = new WBPair(w, b); 
 
 				for (let p = 0; p < lastBatchSize; ++p) {
+					let expect = new Matrix((this.layers)[this.layers.length - 1], 1, false);
+                    expect.setEntry(data[(batchNum - 1) * batchSize + p].label, 0, 1);
+                
 					
-					
-					wb = wb.add(this.backPropagate(data[(batchNum - 1) * batchSize + p][0], data[(batchNum - 1) * batchSize + p][1]));
-					c += this.cost(data[(batchNum - 1) * batchSize + p][0], data[(batchNum - 1) * batchSize + p][1]);
+					wb = wb.add(this.backPropagate(new Matrix(data[(batchNum - 1) * batchSize + p]), expect));
+					c += this.cost(new Matrix(data[(batchNum - 1) * batchSize + p]), expect);
 					
 					
                 }
@@ -558,10 +574,10 @@ class NeuralNetwork_Sigmoid_Quadratic_Cost {
 				this.update(wb, rate);
 				
 			}
-            console.log(`${c / size}\\n`)
-            console.log(`Accuracy: ${this.test(testdata)}\\n`)
+            console.log(`${c / size}\\n`);
+            console.log(`Accuracy: ${this.test(testdata)}\\n`);
 		}
-		console.log("Training completed.")
+		console.log("Training completed.");
     }
     
     
@@ -584,79 +600,93 @@ class NeuralNetwork_Sigmoid_Quadratic_Cost {
       
         return array;
     }
+
+    // Drawing functions specifically for [784, 16, 10]
+    showNetwork(drawdata) {
+        
+        fill(150);
+        stroke(0);
+        strokeWeight(2);
+        for (let i = 0; i < 10; ++i) {
+            circle(400, 30 + i * 40, 30);
+        }
+
+        fill(0);
+        circle(400, 420, 5);
+        circle(400, 430, 5);
+        circle(400, 440, 5);
+
+        fill(150);
+        stroke(0);
+        strokeWeight(2);
+        for (let i = 0; i < 9; ++i) {
+            
+            circle(400, 470 + i * 40, 30);
+        }
+        
+        for (let i = 0; i < 16; ++i) {
+            stroke(this.biases[0].getEntry(i, 0) * 2550);
+            circle(740, 70 + i * 45, 30);
+        }
+
+        for (let i = 0; i < 10; ++i) {
+            stroke(this.biases[1].getEntry(i, 0) * 2550);
+            circle(1080, 90 + i * 70, 30);
+        }
+
+        strokeWeight(2);
+        for (let i = 0; i < drawdata.first.length; ++i) {
+            for (let j = 0; j < drawdata.secondF.length; ++j) {
+                if (i >= 0 && i < 10) {
+                    if (this.weights[0].getEntry(j, i) >= 0) {
+                        stroke(this.weights[0].getEntry(j, i) * 25500, 0, 0);
+                        line(drawdata.first[i][0], drawdata.first[i][1], drawdata.secondF[j][0], drawdata.secondF[j][1]);
+            
+                    } else {
+                        stroke(0, 0, this.weights[0].getEntry(j, i) * 25500);
+                        line(drawdata.first[i][0], drawdata.first[i][1], drawdata.secondF[j][0], drawdata.secondF[j][1]);
+            
+                    }
+                    
+                } else {
+                    if (this.weights[0].getEntry(j, this.layers[0] - (drawdata.first.length - i)) >= 0) {
+                        stroke(this.weights[0].getEntry(j, this.layers[0] - (drawdata.first.length - i)) * 25500, 0, 0);
+                        line(drawdata.first[i][0], drawdata.first[i][1], drawdata.secondF[j][0], drawdata.secondF[j][1]);
+            
+                    } else {
+                        stroke(0, 0, this.weights[0].getEntry(j, this.layers[0] - (drawdata.first.length - i)) * 25500);
+                        line(drawdata.first[i][0], drawdata.first[i][1], drawdata.secondF[j][0], drawdata.secondF[j][1]);
+            
+                    }
+                }
+                //stroke(Math.random() * 255, 0, 0);
+                //line(drawdata.first[i][0], drawdata.first[i][1], drawdata.secondF[j][0], drawdata.secondF[j][1]);
+            }
+        }
+        for (let i = 0; i < drawdata.secondB.length; ++i) {
+            for (let j = 0; j < drawdata.third.length; ++j) {
+                if (this.weights[1].getEntry(j, i) >= 0) {
+                    stroke(this.weights[1].getEntry(j, i) * 255000, 0, 0);
+                } else {
+                    stroke(0, 0, this.weights[1].getEntry(j, i) * 255000);
+                }
+                line(drawdata.secondB[i][0], drawdata.secondB[i][1], drawdata.third[j][0], drawdata.third[j][1]);
+            }
+        }
+
+        
+
+    }
+
+    showOutput(input) {
+        var expect = this.feedforward(input);
+        for (let i = 0; i < 10; ++i) {
+            stroke(this.biases[1].getEntry(i, 0) * 2550);
+            fill(expect.getEntry(i, 0) * 2550);
+            circle(1130, 90 + i * 70, 30);
+        }
+        return expect.maxIndex();
+    }
 }
 
-var testlayers = new Array(16, 4);
-var net = new NeuralNetwork_Sigmoid_Quadratic_Cost(testlayers);
-
-var zero = new Matrix(new Array(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
-var one = new Matrix(new Array(0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
-var two = new Matrix(new Array(0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
-var three = new Matrix(new Array(0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
-var four = new Matrix(new Array(0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
-var five = new Matrix(new Array(0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
-var six = new Matrix(new Array(0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0));
-var seven = new Matrix(new Array(0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0));
-var eight = new Matrix(new Array(0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0));
-var nine = new Matrix(new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0));
-var ten = new Matrix(new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0));
-var ele = new Matrix(new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0));
-var twel = new Matrix(new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0));
-var thir = new Matrix(new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0));
-var fourt = new Matrix(new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0));
-var fif = new Matrix(new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1));
-
-var ezero = new Matrix(new Array(0,0,0,0));
-		
-var eone = new Matrix(new Array(0,0,0,1));
-
-var etwo = new Matrix(new Array(0,0,1,0));
-
-var ethree = new Matrix(new Array(0,0,1,1));
-
-var efour = new Matrix(new Array(0,1,0,0));
-
-var efive = new Matrix(new Array(0,1,0,1));
-
-var esix = new Matrix(new Array(0,1,1,0));
-
-var eseven = new Matrix(new Array(0,1,1,1));
-
-var eeight = new Matrix(new Array(1,0,0,0));
-
-var enine = new Matrix(new Array(1,0,0,1));
-
-var eten = new Matrix(new Array(1,0,1,0));
-
-var eele = new Matrix(new Array(1,0,1,1));
-
-var etwelve = new Matrix(new Array(1,1,0,0));
-
-var ethir = new Matrix(new Array(1,1,0,1));
-
-var efourt = new Matrix(new Array(1,1,1,0));
-
-var efif = new Matrix(new Array(1,1,1,1));
-
-var trainData = new Array();
-trainData.push(new Array(zero, ezero));
-trainData.push(new Array(one, eone));
-trainData.push(new Array(two, etwo));
-trainData.push(new Array(three, ethree));
-trainData.push(new Array(four, efour));
-trainData.push(new Array(five, efive));
-trainData.push(new Array(six, esix));
-trainData.push(new Array(seven, eseven));
-trainData.push(new Array(eight, eeight));
-trainData.push(new Array(nine, enine));
-trainData.push(new Array(ten, eten));
-trainData.push(new Array(ele, eele));
-trainData.push(new Array(twel, etwelve));
-trainData.push(new Array(thir, ethir));
-trainData.push(new Array(fourt, efourt));
-trainData.push(new Array(fif, efif));
-
-console.log(net.test(trainData));
-net.trainStochasticUnmonitored(trainData, 4, 1, 60);
-console.log(net.test(trainData));
 
